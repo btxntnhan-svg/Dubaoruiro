@@ -15,47 +15,50 @@ st.set_page_config(page_title="Hệ thống KTNB", layout="wide")
 st.markdown("""
     <style>
         .data-header { font-size: 1.8rem; font-weight: 700; color: #1e293b; margin-bottom: 1rem; }
-        /* Định dạng cho các metric */
-        div[data-testid="stMetricValue"] { 
-            color: #3b82f6 !important; 
-            font-weight: 800 !important; 
-            font-size: 2.2rem !important; 
-        }
-        div[data-testid="stMetricLabel"] { 
-            font-size: 1rem !important; 
-            color: #64748b !important; 
-        }
+        div[data-testid="stMetricValue"] { color: #3b82f6 !important; font-weight: 800 !important; font-size: 2.2rem !important; }
+        div[data-testid="stMetricLabel"] { font-size: 1rem !important; color: #64748b !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. LOAD DỮ LIỆU
+# 3. LOAD DỮ LIỆU THÔNG MINH
 uploaded_file = st.sidebar.file_uploader("Tải lên tệp CSV", type=["csv"])
-if uploaded_file:
-    df = pd.read_csv(uploaded_file, parse_dates=["transaction_date"])
-    
-    # HIỂN THỊ DỮ LIỆU THÔ (Với màu xanh dương in đậm)
-    st.markdown('<div class="data-header">Phân tích cấu trúc dữ liệu thô</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Số lượng bản ghi (Rows)", f"{len(df):,}")
-    c2.metric("Số lượng trường dữ liệu (Columns)", f"{len(df.columns)}")
-    c3.metric("Dung lượng tệp tin", f"{uploaded_file.size / (1024*1024):.2f} MB")
+df = None
 
-    # 4. VẼ BIỂU ĐỒ (ĐÃ LOẠI BỎ 'hovermode' ĐỂ KHÔNG BỊ LỖI VALUEERROR)
-    st.subheader("Thống kê giao dịch")
-    hour_counts = df['transaction_date'].dt.hour.value_counts().sort_index()
+if uploaded_file is not None:
+    # Đọc dữ liệu thô
+    df_temp = pd.read_csv(uploaded_file)
     
-    fig = go.Figure()
-    fig.add_trace(go.Bar(x=hour_counts.index, y=hour_counts.values, name="Tổng giao dịch"))
+    # Tự động tìm cột có chứa thông tin ngày tháng
+    date_col = next((col for col in df_temp.columns if "date" in col.lower() or "time" in col.lower()), None)
     
-    # Cấu hình layout tối giản, an toàn cho trục Y kép
-    fig.update_layout(
-        template='plotly_dark',
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=20, r=20, t=30, b=20),
-        # KHÔNG SỬ DỤNG hovermode TẠI ĐÂY ĐỂ TRÁNH LỖI VALUEERROR
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    if date_col:
+        df = pd.read_csv(uploaded_file, parse_dates=[date_col])
+        df = df.rename(columns={date_col: "transaction_date"}) # Chuẩn hóa về tên code mong muốn
+        
+        # HIỂN THỊ DỮ LIỆU THÔ
+        st.markdown('<div class="data-header">Phân tích cấu trúc dữ liệu thô</div>', unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Số lượng bản ghi (Rows)", f"{len(df):,}")
+        c2.metric("Số lượng trường dữ liệu (Columns)", f"{len(df.columns)}")
+        c3.metric("Dung lượng tệp tin", f"{uploaded_file.size / (1024*1024):.2f} MB")
+
+        # 4. VẼ BIỂU ĐỒ (LOẠI BỎ CÁC THAM SỐ GÂY LỖI)
+        st.subheader("Thống kê giao dịch")
+        hour_counts = df['transaction_date'].dt.hour.value_counts().sort_index()
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=hour_counts.index, y=hour_counts.values, name="Tổng giao dịch"))
+        
+        # Layout an toàn
+        fig.update_layout(
+            template='plotly_dark',
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=20, r=20, t=30, b=20)
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.error(f"❌ Không tìm thấy cột ngày tháng trong file. Các cột hiện có: {list(df_temp.columns)}")
 
 else:
     st.info("Vui lòng tải tệp CSV lên thanh bên để bắt đầu.")
