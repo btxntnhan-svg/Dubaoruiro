@@ -9,7 +9,7 @@ import io
 import os
 
 # 1. CẤU HÌNH GIAO DIỆN
-st.set_page_config(page_title="Hệ thống KTNB", layout="wide")
+st.set_page_config(page_title="Hệ thống phát hiện gian lận tại Agribank", layout="wide")
 
 # 2. CSS ĐỊNH DẠNG MÀU XANH DƯƠNG VÀ IN ĐẬM
 st.markdown("""
